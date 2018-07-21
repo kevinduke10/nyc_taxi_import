@@ -1,11 +1,12 @@
-package domain
+package com.tectonix.taxiimport.domain
 
-class GreenCab {
+class YellowCab {
     //1= Creative Mobile Technologies, LLC; 2= VeriFone Inc.
     Integer vendorId
     Date tpepPickupDatetime
     Date tpepDropoffDatetime
-    Boolean storeAndFwdFlag
+    Integer passengerCount
+    Double tripDistance
 
     //    1= Standard rate
     //    2=JFK
@@ -15,19 +16,9 @@ class GreenCab {
     //    6=Group ride
     Integer ratecodeId
 
+    Boolean storeAndFwdFlag
     Integer puLocationId
     Integer doLocationId
-
-    Integer passengerCount
-    Double tripDistance
-    Double fareAmount
-    Double extra
-    Double mtaTax
-    Double tipAmount
-    Double tollsAmount
-    Double ehailFee
-    Double improvementSurcharge
-    Double totalAmount
 
     //    1= Credit card
     //    2= Cash
@@ -36,8 +27,11 @@ class GreenCab {
     //    5= Unknown
     //    6= Voided trip
     Integer paymentType
-
-    //1= Street-hail
-    //2= Dispatch
-    Integer tripType
+    Double fareAmount
+    Double extra
+    Double mtaTax
+    Double tipAmount
+    Double tollsAmount
+    Double improvementSurcharge
+    Double totalAmount
 }

@@ -1,5 +1,4 @@
-group 'com.tectonix'
-version '1.0-SNAPSHOT'
+version 'unspecified'
 
 apply plugin: 'groovy'
 apply plugin: 'java'
