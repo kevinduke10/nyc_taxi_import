@@ -3,8 +3,8 @@ package com.tectonix.taxiimport.domain
 class YellowCab {
     //1= Creative Mobile Technologies, LLC; 2= VeriFone Inc.
     Integer vendorId
-    Date tpepPickupDatetime
-    Date tpepDropoffDatetime
+    long tpepPickupDatetime
+    long tpepDropoffDatetime
     Integer passengerCount
     Double tripDistance
     String rateType

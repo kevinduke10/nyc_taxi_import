@@ -1,6 +1,5 @@
 package com.tectonix.taxiimport
 
-import com.sun.deploy.net.HttpRequest
 import com.tectonix.taxiimport.domain.GreenCab
 import com.tectonix.taxiimport.domain.TaxiTools
 import com.tectonix.taxiimport.domain.YellowCab
@@ -56,8 +55,8 @@ class TaxiImport {
                 yellowCabs.add(
                         new YellowCab(
                             vendorId:splitLine[0].toInteger(),
-                            tpepPickupDatetime:dateFormat.parse(splitLine[1]),
-                            tpepDropoffDatetime:dateFormat.parse(splitLine[2]),
+                            tpepPickupDatetime:dateFormat.parse(splitLine[1]).getTime(),
+                            tpepDropoffDatetime:dateFormat.parse(splitLine[2]).getTime(),
                             passengerCount:splitLine[3].toInteger(),
                             tripDistance:splitLine[4].toDouble(),
                             pickupLocation: [splitLine[5].toDouble(),splitLine[6].toDouble()],
@@ -128,7 +127,12 @@ class TaxiImport {
                 "      },\n" +
                 "      \"dynamic\": \"false\",\n" +
                 "      \"properties\": {\n" +
-                "      \t\n" +
+                "      \t\"tpepPickupDatetime\": {\n" +
+                "          \"type\": \"date\"\n" +
+                "        },\n" +
+                "        \"tpepDropoffDatetime\": {\n" +
+                "          \"type\": \"date\"\n" +
+                "        },\n" +
                 "        \"location\": {\n" +
                 "          \"type\": \"geo_point\",\n" +
                 "          \"fields\": {\n" +
