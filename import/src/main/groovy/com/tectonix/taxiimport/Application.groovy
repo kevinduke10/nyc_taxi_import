@@ -1,19 +1,19 @@
 package com.tectonix.taxiimport
 
+import org.springframework.boot.SpringApplication
+import org.springframework.boot.autoconfigure.SpringBootApplication
+import org.springframework.boot.builder.SpringApplicationBuilder
+
+@SpringBootApplication
 class Application {
 
     public static void main(String[] args) {
-        try {
-            TaxiImport taxiImport = new TaxiImport()
-            taxiImport.deleteTaxiIndex()
-            boolean taxiIndexExists = taxiImport.checkTaxiIndexExists()
-            if(!taxiIndexExists){
-                taxiImport.createTaxiIndexMapping()
-                taxiImport.indexYellowTaxisFromFile()
-            }
+        SpringApplication springApplication =
+                new SpringApplicationBuilder()
+                        .sources(Application.class)
+                        .web(false)
+                        .build();
 
-        } catch (Exception e) {
-            e.printStackTrace()
-        }
+        springApplication.run(args);
     }
 }

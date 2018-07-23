@@ -21,4 +21,6 @@ class YellowCab {
     Double totalAmount
     Double[] pickupLocation
     Double[] dropoffLocation
+    Double[] location
+    long timestamp
 }

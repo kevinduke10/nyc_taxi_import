@@ -13,12 +13,48 @@ import org.apache.http.entity.StringEntity
 import org.apache.http.impl.client.CloseableHttpClient
 import org.apache.http.impl.client.HttpClients
 import org.apache.http.util.EntityUtils
+import org.springframework.beans.factory.annotation.Value
+import org.springframework.stereotype.Component
 
+import javax.annotation.PostConstruct
 import java.text.DateFormat
 import java.text.SimpleDateFormat
+import java.util.concurrent.Executors
+import java.util.concurrent.ScheduledExecutorService
 
+@Component
 class TaxiImport {
     DateFormat dateFormat = new SimpleDateFormat('yyyy-MM-dd HH:mm:ss')
+    @Value('${data.location}')
+    private String importDataLocation
+
+    @PostConstruct
+    private void init(){
+        ScheduledExecutorService scheduledExecutorService = Executors.newScheduledThreadPool(1);
+        Runnable runnable = new Runnable() {
+
+            @Override
+            public void run() {
+                ensureIndexPopulated()
+            }
+        };
+
+        scheduledExecutorService.scheduleAtFixedRate(runnable,0,10,java.util.concurrent.TimeUnit.MINUTES)
+    }
+
+
+
+    public void ensureIndexPopulated(){
+        try{
+            boolean indexExists = checkTaxiIndexExists()
+            if(!indexExists){
+                createTaxiIndexMapping()
+                indexYellowTaxisFromFile()
+            }
+        }catch(Exception e){
+            e.printStackTrace()
+        }
+    }
 
     public void deleteTaxiIndex(){
         CloseableHttpClient client = HttpClients.createDefault();
@@ -31,13 +67,15 @@ class TaxiImport {
         CloseableHttpClient client = HttpClients.createDefault();
         HttpGet catIndicies = new HttpGet('http://www.pangea-demo.com/es/_cat/indices')
         CloseableHttpResponse response = client.execute(catIndicies)
-        return EntityUtils.toString(response.getEntity()).contains("taxi")
+        String responseString = EntityUtils.toString(response.getEntity())
+        client.close()
+        return responseString.contains("taxi")
     }
 
 
-    public void indexYellowTaxisFromFile(String fileName){
-        File sampleFile = new File("/Users/Kev/Downloads/yellow_tripdata_2016-01.csv")
-        FileInputStream inputStream = new FileInputStream(sampleFile)
+    public void indexYellowTaxisFromFile(){
+        File yellowFile = new File(importDataLocation)
+        FileInputStream inputStream = new FileInputStream(yellowFile)
         List<YellowCab> yellowCabs = new ArrayList<>()
 
         inputStream.eachLine { line ->
@@ -70,7 +108,9 @@ class TaxiImport {
                             tipAmount:splitLine[15].toDouble(),
                             tollsAmount:splitLine[16].toDouble(),
                             improvementSurcharge:splitLine[17].toDouble(),
-                            totalAmount:splitLine[18].toDouble()
+                            totalAmount:splitLine[18].toDouble(),
+                            location: [splitLine[5].toDouble(),splitLine[6].toDouble()],
+                            timestamp: dateFormat.parse(splitLine[1]).getTime()
                     )
                 )
             }
@@ -82,7 +122,7 @@ class TaxiImport {
     }
 
     public List<GreenCab> readGreenTaxisFromFile(String fileName){
-        File greenSampleFile = new File("/Users/Kev/Development/nyc_taxi_import/import/src/main/resources/sample_green_taxi.csv")
+        File greenSampleFile = new File(importDataLocation)
         FileInputStream greenInputStream = new FileInputStream(greenSampleFile)
         List<GreenCab> greenCabs = greenInputStream.eachLine {
             line ->
@@ -136,7 +176,7 @@ class TaxiImport {
                 "        \"location\": {\n" +
                 "          \"type\": \"geo_point\",\n" +
                 "          \"fields\": {\n" +
-                "            \"pickupLocation\": {\n" +
+                "            \"pangea\": {\n" +
                 "              \"type\": \"pangea\"\n" +
                 "            }\n" +
                 "          }\n" +
