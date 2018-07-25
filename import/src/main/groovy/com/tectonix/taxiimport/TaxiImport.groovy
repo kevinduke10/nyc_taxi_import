@@ -26,6 +26,8 @@ class TaxiImport {
     DateFormat dateFormat = new SimpleDateFormat('yyyy-MM-dd HH:mm:ss')
     @Value('${data.location}')
     private String importDataLocation
+    @Value('${bulk.index.size:1000}')
+    private Integer bulkIndexSize
 
     CloseableHttpClient client = HttpClients.createDefault();
 
@@ -83,7 +85,7 @@ class TaxiImport {
         BigInteger bigInt = 0
         inputStream.eachLine { line ->
             bigInt = bigInt + 1
-            if(yellowCabs.size() > 5000){
+            if(yellowCabs.size() > bulkIndexSize){
                 boolean bulkSuccess = bulkIndexTaxis(yellowCabs)
                 if(!bulkSuccess){
                     println "Failed somewhere near line: ${bigInt}"
