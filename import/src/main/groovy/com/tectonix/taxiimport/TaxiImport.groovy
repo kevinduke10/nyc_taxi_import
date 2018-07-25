@@ -15,7 +15,6 @@ import org.apache.http.impl.client.HttpClients
 import org.apache.http.util.EntityUtils
 import org.springframework.beans.factory.annotation.Value
 import org.springframework.stereotype.Component
-
 import javax.annotation.PostConstruct
 import java.text.DateFormat
 import java.text.SimpleDateFormat
@@ -27,6 +26,8 @@ class TaxiImport {
     DateFormat dateFormat = new SimpleDateFormat('yyyy-MM-dd HH:mm:ss')
     @Value('${data.location}')
     private String importDataLocation
+
+    CloseableHttpClient client = HttpClients.createDefault();
 
     @PostConstruct
     private void init(){
@@ -42,14 +43,17 @@ class TaxiImport {
         scheduledExecutorService.scheduleAtFixedRate(runnable,0,10,java.util.concurrent.TimeUnit.MINUTES)
     }
 
-
-
     public void ensureIndexPopulated(){
         try{
             boolean indexExists = checkTaxiIndexExists()
             if(!indexExists){
+                println "Index doesn't exist creating"
                 createTaxiIndexMapping()
-                indexYellowTaxisFromFile()
+                File fileDirectory = new File(importDataLocation)
+                fileDirectory.listFiles().each{ file ->
+                    println "Ingesting file = ${file.name}"
+                    indexYellowTaxisFromFile(file.getAbsolutePath())
+                }
             }
         }catch(Exception e){
             e.printStackTrace()
@@ -57,34 +61,32 @@ class TaxiImport {
     }
 
     public void deleteTaxiIndex(){
-        CloseableHttpClient client = HttpClients.createDefault();
         HttpDelete deleteTaxis = new HttpDelete('http://www.pangea-demo.com/es/taxi')
         CloseableHttpResponse response = client.execute(deleteTaxis)
-        client.close()
+        //client.close()
     }
 
     public boolean checkTaxiIndexExists(){
-        CloseableHttpClient client = HttpClients.createDefault();
+        //CloseableHttpClient client = HttpClients.createDefault();
         HttpGet catIndicies = new HttpGet('http://www.pangea-demo.com/es/_cat/indices')
         CloseableHttpResponse response = client.execute(catIndicies)
         String responseString = EntityUtils.toString(response.getEntity())
-        client.close()
+        //client.close()
         return responseString.contains("taxi")
     }
 
 
-    public void indexYellowTaxisFromFile(){
-        File yellowFile = new File(importDataLocation)
+    public void indexYellowTaxisFromFile(String pathName){
+        File yellowFile = new File(pathName)
         FileInputStream inputStream = new FileInputStream(yellowFile)
         List<YellowCab> yellowCabs = new ArrayList<>()
-
+        BigInteger bigInt = 0
         inputStream.eachLine { line ->
-            if(yellowCabs.size() > 900){
+            bigInt = bigInt + 1
+            if(yellowCabs.size() > 5000){
                 boolean bulkSuccess = bulkIndexTaxis(yellowCabs)
-                if(bulkSuccess){
-                    "success"
-                }else{
-                    "failed"
+                if(!bulkSuccess){
+                    println "Failed somewhere near line: ${bigInt}"
                 }
                 yellowCabs.clear()
             }
@@ -156,7 +158,7 @@ class TaxiImport {
     }
 
     public void createTaxiIndexMapping(){
-        CloseableHttpClient client = HttpClients.createDefault();
+        //CloseableHttpClient client = HttpClients.createDefault();
         HttpPut createMapping = new HttpPut("http://www.pangea-demo.com/es/taxi")
         createMapping.setHeader("Content-type", "application/json");
         StringEntity entity = new StringEntity("{\n" +
@@ -167,7 +169,7 @@ class TaxiImport {
                 "      },\n" +
                 "      \"dynamic\": \"false\",\n" +
                 "      \"properties\": {\n" +
-                "      \t\"tpepPickupDatetime\": {\n" +
+                "      \t\"timestamp\": {\n" +
                 "          \"type\": \"date\"\n" +
                 "        },\n" +
                 "        \"tpepDropoffDatetime\": {\n" +
@@ -194,23 +196,30 @@ class TaxiImport {
         createMapping.setEntity(entity)
         CloseableHttpResponse response = client.execute(createMapping);
         String responseString = EntityUtils.toString(response.getEntity());
-        client.close();
+        //client.close();
     }
 
     public boolean bulkIndexTaxis(List<YellowCab> yellowCabs){
-        CloseableHttpClient client = HttpClients.createDefault();
-        HttpPost bulkPost = new HttpPost("http://www.pangea-demo.com/es/_bulk")
-        bulkPost.setHeader("Content-type", "application/json");
-        String bulkContent = ""
-        yellowCabs.each{cab ->
-            String bulkIndexHeader = "{\"index\":{ \"_index\" : \"taxi\",\"_type\" : \"taxi\", \"_id\" : \"${UUID.randomUUID()}\" }}\n"
-            bulkContent += bulkIndexHeader + JsonOutput.toJson(cab) + "\n"
+        try {
+            HttpPost bulkPost = new HttpPost("http://www.pangea-demo.com/es/_bulk")
+            bulkPost.setHeader("Content-type", "application/json");
+            String bulkContent = ""
+            yellowCabs.each { cab ->
+                String bulkIndexHeader = "{\"index\":{ \"_index\" : \"taxi\",\"_type\" : \"taxi\", \"_id\" : \"${UUID.randomUUID()}\" }}\n"
+                bulkContent += bulkIndexHeader + JsonOutput.toJson(cab) + "\n"
+            }
+            StringEntity entity = new StringEntity(bulkContent + "\n")
+            bulkPost.setEntity(entity)
+            CloseableHttpResponse response = client.execute(bulkPost);
+            String bulkResponse = EntityUtils.toString(response.getEntity());
+            //client.close();
+            //return bulkResponse.contains("errors\":false")
+            return true
+        }catch(Exception e){
+            println "Error bulk indexing"
+            e.printStackTrace()
+            //client.close()
+            return true
         }
-        StringEntity entity = new StringEntity(bulkContent + "\n")
-        bulkPost.setEntity(entity)
-        CloseableHttpResponse response = client.execute(bulkPost);
-        String bulkResponse = EntityUtils.toString(response.getEntity());
-        client.close();
-        return bulkResponse.contains("errors\":false")
     }
 }
